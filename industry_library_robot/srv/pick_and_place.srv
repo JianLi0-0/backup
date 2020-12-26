@@ -1,0 +1,4 @@
+geometry_msgs/Pose object_position
+int64 place_point
+---
+bool is_successful
