@@ -7,6 +7,8 @@ int main(int argc, char **argv)
 
     Robot robot(nh);
     // ros::Rate loop_rate(1000);
+    ros::Duration(0.3).sleep();
+    robot.joint_position_control(robot.home_angles.data, 3.0);
 
     ros::spin();
     // while (ros::ok())

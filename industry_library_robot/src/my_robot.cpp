@@ -30,11 +30,7 @@ Robot::Robot(ros::NodeHandle &nh):nh_(nh), joint_seed(6),
         home_angles.data.push_back(json_joint_angle[i].asDouble());
         last_computed_angle.data.push_back(json_joint_angle[i].asDouble());    // home postion
     }
-  
-    ros::Duration(0.3).sleep();
-    // gazebo_position_controller.publish(home_angles);
-    joint_position_control(home_angles.data, 3.0);
-
+    
     // read from the tf tree
     home_pose = listen_to_transform("base_link", "ee_link", ros::Time(0));
     base_to_camera_pose = listen_to_transform_tf("base_link", "camera_frame", ros::Time(0));

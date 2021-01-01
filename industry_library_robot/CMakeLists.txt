@@ -40,3 +40,15 @@ target_link_libraries(picking
   ${catkin_LIBRARIES}
   jsoncpp
 )
+
+add_executable(testing
+  src/test.cpp
+  src/my_robot.cpp
+  include/my_robot.h
+  include/utils/utils.hpp
+)
+add_dependencies(testing ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(testing
+  ${catkin_LIBRARIES}
+  jsoncpp
+)
