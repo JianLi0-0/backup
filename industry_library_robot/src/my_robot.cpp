@@ -32,13 +32,15 @@ Robot::Robot(ros::NodeHandle &nh):nh_(nh), joint_seed(6),
     }
     
     // read from the tf tree
-    home_pose = listen_to_transform("base_link", "ee_link", ros::Time(0));
-    base_to_camera_pose = listen_to_transform_tf("base_link", "camera_frame", ros::Time(0));
+    // home_pose = listen_to_transform("base_link", "ee_link", ros::Time(0));
+    // ee_link_to_camera_link = listen_to_transform_tf("ee_link", "camera_link", ros::Time(0));
+    // camera_link_to_color_optical_frame = listen_to_transform_tf("camera_link", "camera_color_optical_frame", ros::Time(0));
 
     grasping_orientation.x = 0.025825;
     grasping_orientation.y = 0.73124;
     grasping_orientation.z = 0.024188;
     grasping_orientation.w = 0.68121;
+
 }
 
 Robot::~Robot() {}
@@ -57,9 +59,13 @@ bool Robot::pick_and_place_callback(industry_library_robot::pick_and_place::Requ
     static tf::Transform camera_to_object;
     static tf::Transform base_to_object;
 
+    base_to_ee_link = listen_to_transform_tf("base_link", "ee_link", ros::Time(0));
+    auto ee_link_to_color_optical_frame = listen_to_transform_tf("ee_link", "camera_color_optical_frame", ros::Time(0));
+
     camera_to_object.setIdentity();
     camera_to_object.setOrigin(tf::Vector3(req.object_position.position.x, req.object_position.position.y, req.object_position.position.z));
-    base_to_object.mult(base_to_camera_pose, camera_to_object);
+    base_to_object = base_to_ee_link * ee_link_to_color_optical_frame * camera_to_object;
+
     cartesian_position.position.x = base_to_object.getOrigin().getX();
     cartesian_position.position.y = base_to_object.getOrigin().getY();
     cartesian_position.position.z = base_to_object.getOrigin().getZ();
@@ -108,7 +114,8 @@ bool Robot::pick_and_place_callback(industry_library_robot::pick_and_place::Requ
         cartesian_position_control(temp_box_position, 1.0, 0.0);
         
         // back to stand by position
-        cartesian_position_control(home_pose, 3.0, 0.0);
+        joint_position_control(home_angles.data, 3.0);
+        // cartesian_position_control(home_pose, 3.0, 0.0);
         
         
     }
@@ -199,7 +206,7 @@ geometry_msgs::Pose Robot::listen_to_transform(string base_frame, string target_
 tf::StampedTransform Robot::listen_to_transform_tf(string base_frame, string target_frame, ros::Time time_stamped)
 {
     tf::StampedTransform transform;
-    static tf::TransformListener listener(ros::Duration(10));
+    static tf::TransformListener listener(ros::Duration(5));
     listener.waitForTransform(base_frame, target_frame, ros::Time(0), ros::Duration(3.0));
     listener.lookupTransform(base_frame, target_frame, ros::Time(0), transform);
     return transform;

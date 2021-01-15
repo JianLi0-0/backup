@@ -34,7 +34,9 @@ class Robot
         ros::Timer tf_broadcast_publish_timer;
 
         geometry_msgs::Pose home_pose;
-        tf::StampedTransform base_to_camera_pose;
+        tf::StampedTransform base_to_ee_link;
+        tf::StampedTransform ee_link_to_camera_link;
+        tf::StampedTransform camera_link_to_color_optical_frame;
         std_msgs::Float64MultiArray home_angles;
         Json::Value json_params;
         Json::Value picking_parems;
