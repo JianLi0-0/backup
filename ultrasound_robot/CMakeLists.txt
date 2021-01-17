@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0.2)
-project(supersound_robot)
+project(ultrasound_robot)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 add_compile_options(-std=c++11)
@@ -24,6 +24,11 @@ find_package(Eigen3 REQUIRED)
 
 generate_dynamic_reconfigure_options(
   cfg/force_controller.cfg
+)
+
+add_service_files(
+  FILES
+  wipe_bb.srv
 )
 
 catkin_package(
@@ -72,4 +77,15 @@ target_link_libraries(wipe_blackboard
   ${catkin_LIBRARIES}
 )
 
+
+add_executable(pcl_normal_estimator
+  src/pcl_normal_estimator.cpp
+)
+add_dependencies(pcl_normal_estimator 
+  ${${PROJECT_NAME}_EXPORTED_TARGETS} 
+  ${catkin_EXPORTED_TARGETS}
+)
+target_link_libraries(pcl_normal_estimator
+  ${catkin_LIBRARIES}
+)
 
