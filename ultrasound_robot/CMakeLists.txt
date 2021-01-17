@@ -19,6 +19,7 @@ find_package(catkin REQUIRED COMPONENTS
   dynamic_reconfigure
   pcl_ros
   pcl_conversions
+  message_generation
 )
 find_package(Eigen3 REQUIRED)
 
@@ -29,6 +30,12 @@ generate_dynamic_reconfigure_options(
 add_service_files(
   FILES
   wipe_bb.srv
+)
+
+generate_messages(
+  DEPENDENCIES
+  std_msgs
+  geometry_msgs
 )
 
 catkin_package(
