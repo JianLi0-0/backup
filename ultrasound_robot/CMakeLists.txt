@@ -17,6 +17,8 @@ find_package(catkin REQUIRED COMPONENTS
   moveit_ros_planning_interface
   tf
   dynamic_reconfigure
+  pcl_ros
+  pcl_conversions
 )
 find_package(Eigen3 REQUIRED)
 
@@ -51,6 +53,22 @@ add_dependencies(admittance_controller
   ${PROJECT_NAME}_gencfg
 )
 target_link_libraries(admittance_controller
+  ${catkin_LIBRARIES}
+)
+
+add_executable(wipe_blackboard
+  src/wipe_blackboard.cpp
+  src/StatesHub.cpp
+  src/ForceTorqueController.cpp
+  include/StatesHub.h
+  include/ForceTorqueController.h
+  include/utils/utils.hpp
+)
+add_dependencies(wipe_blackboard 
+  ${${PROJECT_NAME}_EXPORTED_TARGETS} 
+  ${catkin_EXPORTED_TARGETS}
+)
+target_link_libraries(wipe_blackboard
   ${catkin_LIBRARIES}
 )
 
