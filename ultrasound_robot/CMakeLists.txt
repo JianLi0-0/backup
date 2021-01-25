@@ -55,9 +55,6 @@ add_executable(admittance_controller
   src/admittance_controller.cpp
   src/StatesHub.cpp
   src/ForceTorqueController.cpp
-  include/StatesHub.h
-  include/ForceTorqueController.h
-  include/utils/utils.hpp
 )
 add_dependencies(admittance_controller 
   ${${PROJECT_NAME}_EXPORTED_TARGETS} 
@@ -73,10 +70,6 @@ add_executable(wipe_blackboard
   src/StatesHub.cpp
   src/ForceTorqueController.cpp
   src/PointCloudCustomLib.cpp
-  include/StatesHub.h
-  include/ForceTorqueController.h
-  include/utils/utils.hpp
-  include/PointCloudCustomLib.h
 )
 add_dependencies(wipe_blackboard 
   ${${PROJECT_NAME}_EXPORTED_TARGETS} 
