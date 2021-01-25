@@ -21,13 +21,16 @@ class ForceTorqueController
         Eigen::MatrixXd mass_;
         Eigen::MatrixXd mass_inverse_;
         const double delta_t_;
+        double adaptive_sigma;
         
     public:
         ForceTorqueController(std::shared_ptr<SharedVariable> ptr, const pt::ptree config_tree);
         ~ForceTorqueController();
-        Eigen::VectorXd AdmittanceVelocityController(const Eigen::Affine3d& task_frame_pose, const Eigen::VectorXd& expected_wrench);
-        Eigen::VectorXd AdmittancePositionController(const Eigen::Affine3d& task_frame_pose, const Eigen::VectorXd& expected_wrench);
+
+        Eigen::VectorXd AdmittanceVelocityController(const Eigen::Affine3d& base_2_task_frame, const Eigen::VectorXd& expected_wrench);
+        Eigen::VectorXd AdmittancePositionController(const Eigen::Affine3d& base_2_task_frame, const Eigen::VectorXd& expected_wrench);
         Eigen::VectorXd ZeroMomentVelocityController();
+        Eigen::VectorXd AdaptiveForceVelocityController(const Eigen::Affine3d& base_2_task_frame, const Eigen::VectorXd& expected_wrench);
 
         Eigen::VectorXd FromeMatrixToErrorAxisAngle(const Eigen::Affine3d& transformation_error);
         Eigen::MatrixXd AdjointTransformationMatrix(const Eigen::Affine3d& transformation);
