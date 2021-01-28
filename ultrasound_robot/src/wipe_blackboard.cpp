@@ -2,13 +2,6 @@
 #include "ForceTorqueController.h"
 #include "std_msgs/Float64MultiArray.h"
 #include "sensor_msgs/PointCloud2.h"
-#include <geometry_msgs/PoseArray.h>
-#include <pcl/visualization/cloud_viewer.h>
-#include <pcl/io/io.h>
-#include <pcl/io/pcd_io.h>
-#include <pcl/features/integral_image_normal.h>
-#include <pcl/filters/passthrough.h>
-#include <pcl_ros/point_cloud.h>
 #include <ultrasound_robot/wipe_bb.h>
 #include "PointCloudCustomLib.h"
 
@@ -33,6 +26,7 @@ class WipeBlackboard
         ros::ServiceServer wipe_blackboard_service_;
         PointCloudCustomLib pccl_;
         pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_;
+        ForceTorqueController* force_controller_;
 
 
     public:
@@ -55,6 +49,8 @@ WipeBlackboard::WipeBlackboard(std::shared_ptr<SharedVariable> ptr, const pt::pt
     pose_array_pub_ = nh_.advertise<geometry_msgs::PoseArray>("/normal_vectors", 1);
     wipe_blackboard_service_ = nh_.advertiseService("wipe_blackboard_service", &WipeBlackboard::WipeBlackboardServiceCallback, this);
     vel_pub_ = nh_.advertise<std_msgs::Float64MultiArray>("/joint_group_vel_controller/command", 1);
+
+    force_controller_ = new ForceTorqueController(shared_variable_ptr_, config_tree_);
 }
 
 WipeBlackboard::~WipeBlackboard()
@@ -84,7 +80,29 @@ bool WipeBlackboard::WipeBlackboardServiceCallback(ultrasound_robot::wipe_bb::Re
 
 void WipeBlackboard::MainLoop()
 {
-    ros::waitForShutdown();
+    ros::Rate loop_rate( int(1.0/config_tree_.get<double>("delta_t", 0.005)) );
+    Eigen::Affine3d base_2_task_frame;
+    base_2_task_frame.setIdentity();
+    auto translation = AsVector<double>(config_tree_, "admittance_params.static_target");
+    base_2_task_frame.translate( Eigen::Vector3d(translation.data()) );
+    // base_2_task_frame.rotate(Eigen::AngleAxisd(0.5*M_PI, Eigen::Vector3d::UnitY()));
+    auto expected_wrench_data = AsVector<double>(config_tree_, "admittance_params.expected_wrench");
+    Eigen::Map<Eigen::VectorXd> expected_wrench(expected_wrench_data.data(), 6);
+    while (ros::ok())
+    {
+        // auto velocity = force_controller_ ->AdaptiveForceVelocityController(base_2_task_frame, expected_wrench);
+        auto velocity = force_controller_ ->ZeroMomentVelocityController();
+
+        std_msgs::Float64MultiArray velocity_msg;
+        for(int i=0;i<velocity.size();i++)
+            velocity_msg.data.push_back(velocity(i));
+
+        vel_pub_.publish(velocity_msg);
+        loop_rate.sleep();
+    }
+    
+    delete(force_controller_);
+    // ros::waitForShutdown();
 }
 
 int main(int argc, char **argv)
@@ -98,12 +116,8 @@ int main(int argc, char **argv)
     std::shared_ptr<SharedVariable> shared_variable_ptr = std::make_shared<SharedVariable>();
     shared_variable_ptr->config_tree = root;
 
-    ForceTorqueController ft_controller(shared_variable_ptr, root);
     WipeBlackboard wipe_blackboard(shared_variable_ptr, root);
     
-    ros::Rate loop_rate( int(1.0/root.get<double>("delta_t", 0.005)) );
-    // 
-
     ros::AsyncSpinner async_spinner(2);
     async_spinner.start();
     sleep(1);

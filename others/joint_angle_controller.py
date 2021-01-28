@@ -3,10 +3,12 @@ from std_msgs.msg import Float64MultiArray
 from rospy.client import spin
 from sensor_msgs.msg import JointState
 import time
+import math
 import numpy as np
 joint_angle = Float64MultiArray()
 # target_joint_angle = Float64MultiArray()
 target_joint_angle = np.array([0.1303,-0.581,1.980, -2.9699, -1.57079, 0.1303])
+# target_joint_angle = np.array([0.1303,-1.491,1.980, -2.0699, -1.57079, 0.1303])
 def joint_states_cb(msg):
     temp = list(msg.position)
     temp[0] = msg.position[2]
@@ -24,6 +26,7 @@ while not rospy.is_shutdown():
     joint_vel.data = tuple(temp*10)
     pub.publish(joint_vel)
     rate.sleep()
+    # print(np.linalg.norm(temp))
     if np.linalg.norm(temp) < 1e-7:
         exit()
 rospy.spin()

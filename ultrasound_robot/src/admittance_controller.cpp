@@ -32,22 +32,48 @@ int main(int argc, char **argv)
     auto translation = AsVector<double>(root, "admittance_params.static_target");
     task_frame_pose.translate( Eigen::Vector3d(translation.data()) );
     task_frame_pose.rotate(Eigen::AngleAxisd(0.5*M_PI, Eigen::Vector3d::UnitY()));
+
+    Eigen::Affine3d task_frame_pose2;
+    task_frame_pose2.setIdentity();
+    auto translation2 = AsVector<double>(root, "admittance_params.static_target2");
+    task_frame_pose2.translate( Eigen::Vector3d(translation2.data()) );
+    task_frame_pose2.rotate(Eigen::AngleAxisd(0.3*M_PI, Eigen::Vector3d::UnitY()));
+    task_frame_pose2.rotate(Eigen::AngleAxisd(0.2*M_PI, Eigen::Vector3d::UnitZ()));
+
     auto expected_wrench_data = AsVector<double>(root, "admittance_params.expected_wrench");
     Eigen::Map<Eigen::VectorXd> expected_wrench(expected_wrench_data.data(), 6);
     // std::cout << "expected_wrench: " << std::endl << expected_wrench << std::endl;
     while(ros::ok())
     {
         auto past = ros::Time::now();
-        // task_frame_pose = ft_controller.get_base_2_end_effector(); // drag
-        auto jonit_velocity = ft_controller.AdmittanceVelocityController(task_frame_pose, expected_wrench);
-        // std::cout << "ros::Time::now()-past: " << ros::Time::now()-past << std::endl;
-        std_msgs::Float64MultiArray vel;
-        for(int i=0;i<jonit_velocity.size();i++)
+        while((ros::Time::now()-past).toSec() < 5.0)
         {
-            vel.data.push_back(jonit_velocity(i));
+            // task_frame_pose = ft_controller.get_base_2_end_effector(); // drag
+            auto jonit_velocity = ft_controller.AdmittanceVelocityController(task_frame_pose, expected_wrench);
+            // std::cout << "ros::Time::now()-past: " << ros::Time::now()-past << std::endl;
+            std_msgs::Float64MultiArray vel;
+            for(int i=0;i<jonit_velocity.size();i++)
+            {
+                vel.data.push_back(jonit_velocity(i));
+            }
+            vel_pub.publish(vel);
+            loop_rate.sleep();
         }
-        vel_pub.publish(vel);
-        loop_rate.sleep();
+        past = ros::Time::now();
+        while((ros::Time::now()-past).toSec() < 5.0)
+        {
+            // task_frame_pose = ft_controller.get_base_2_end_effector(); // drag
+            auto jonit_velocity = ft_controller.AdmittanceVelocityController(task_frame_pose2, expected_wrench);
+            // std::cout << "ros::Time::now()-past: " << ros::Time::now()-past << std::endl;
+            std_msgs::Float64MultiArray vel;
+            for(int i=0;i<jonit_velocity.size();i++)
+            {
+                vel.data.push_back(jonit_velocity(i));
+            }
+            vel_pub.publish(vel);
+            loop_rate.sleep();
+        }
+        
 
         // std::cout << "jonit_velocity: " << jonit_velocity << std::endl;
         // std::cout << "vel_pub: " << vel << std::endl;
