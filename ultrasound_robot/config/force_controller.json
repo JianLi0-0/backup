@@ -23,6 +23,5 @@
     {
         "wrench_topic": "/wrench",
         "real_robot_compensated_wrench_topic": "/ft_sensor/ft_compensated"
-    },
-    "haha" : "haha"
+    }
 }
