@@ -84,3 +84,4 @@ Equations are based on **"On-line Rigid Object Recognition and Pose Estimation B
 
 
 
+

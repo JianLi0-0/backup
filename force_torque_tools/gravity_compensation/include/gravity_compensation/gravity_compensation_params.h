@@ -38,7 +38,7 @@
 
 #include <vector>
 #include <tf/transform_datatypes.h>
-#include <eigen3/Eigen/Core>
+#include <Eigen/Core>
 
 class GravityCompensationParams
 {

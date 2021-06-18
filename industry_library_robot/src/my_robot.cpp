@@ -1,7 +1,7 @@
 #include "my_robot.h"
 
 Robot::Robot(ros::NodeHandle &nh):nh_(nh), joint_seed(6),
-    config_file("/home/qwe/lee_ws/src/industry_library_robot/json_config/robot_config.json"),
+    config_file("/home/ur5e/lee_ws/src/industry_library_robot/json_config/robot_config.json"),
     ik_solver("base_link", "ee_link", "/robot_description", 0.008, 1e-5, TRAC_IK::Distance)
 {
     // load config file
@@ -12,34 +12,31 @@ Robot::Robot(ros::NodeHandle &nh):nh_(nh), joint_seed(6),
 	else
 	{
         cout<<"Config file loaded."<<endl;
-		picking_parems = json_params["picking"];
+		picking_params = json_params["picking"];
 	}
     // set up publisher and subscriber
     // ur_pub = nh_.advertise<std_msgs::String>("/ur_hardware_interface/script_command", 1);
     // gazebo_position_controller = nh_.advertise<std_msgs::Float64MultiArray>("/joint_group_position_controller/command", 1);
     pos_tra_controller = nh_.advertise<trajectory_msgs::JointTrajectory>("/pos_joint_traj_controller/command", 1);
+    gripper_controller = nh_.advertise<control_msgs::GripperCommandActionGoal>("/ezgripper/main/goal", 1);
     // desired_pose_sub = nh_.subscribe("/touch/stylus_pose" , 5, &Robot::haha, this);
     move_home_pose = nh_.advertiseService("move_home_pose_service", &Robot::move_home_pose_callback, this);
     pick_and_place = nh_.advertiseService("pick_and_place_service", &Robot::pick_and_place_callback, this);
     // variables initialization
-    for(auto point:picking_parems["place_position"]["1"])
+    for(auto point:picking_params["place_position"]["1"])
         cartesian_box_position.push_back(point.asDouble());
 
-    Json::Value json_joint_angle = picking_parems["home_angles"];// read from json config file
+    Json::Value json_joint_angle = picking_params["home_angles"];// read from json config file
     for(int i=0;i<6;i++){
         home_angles.data.push_back(json_joint_angle[i].asDouble());
         last_computed_angle.data.push_back(json_joint_angle[i].asDouble());    // home postion
     }
     
-    // read from the tf tree
-    // home_pose = listen_to_transform("base_link", "ee_link", ros::Time(0));
-    // ee_link_to_camera_link = listen_to_transform_tf("ee_link", "camera_link", ros::Time(0));
-    // camera_link_to_color_optical_frame = listen_to_transform_tf("camera_link", "camera_color_optical_frame", ros::Time(0));
-
-    grasping_orientation.x = 0.025825;
-    grasping_orientation.y = 0.73124;
-    grasping_orientation.z = 0.024188;
-    grasping_orientation.w = 0.68121;
+    ros::Duration(0.2).sleep();
+    control_msgs::GripperCommandActionGoal gripper_command_msg;
+    gripper_command_msg.goal.command.position = 60;
+    gripper_command_msg.goal.command.max_effort = 50;
+    gripper_controller.publish(gripper_command_msg);
 
 }
 
@@ -58,60 +55,83 @@ bool Robot::pick_and_place_callback(industry_library_robot::pick_and_place::Requ
     geometry_msgs::Pose cartesian_position;
     static tf::Transform camera_to_object;
     static tf::Transform base_to_object;
+    control_msgs::GripperCommandActionGoal gripper_command_msg;
 
     base_to_ee_link = listen_to_transform_tf("base_link", "ee_link", ros::Time(0));
-    auto ee_link_to_color_optical_frame = listen_to_transform_tf("ee_link", "camera_color_optical_frame", ros::Time(0));
+    auto ee_link_to_color_optical_frame = listen_to_transform_tf("ee_link", "camera_color_frame", ros::Time(0));
 
     camera_to_object.setIdentity();
     camera_to_object.setOrigin(tf::Vector3(req.object_position.position.x, req.object_position.position.y, req.object_position.position.z));
     base_to_object = base_to_ee_link * ee_link_to_color_optical_frame * camera_to_object;
 
-    cartesian_position.position.x = base_to_object.getOrigin().getX();
-    cartesian_position.position.y = base_to_object.getOrigin().getY();
-    cartesian_position.position.z = base_to_object.getOrigin().getZ();
+    grasping_orientation.x = picking_params["grasp_orientation"][req.object_name][0].asDouble();
+    grasping_orientation.y = picking_params["grasp_orientation"][req.object_name][1].asDouble();
+    grasping_orientation.z = picking_params["grasp_orientation"][req.object_name][2].asDouble();
+    grasping_orientation.w = picking_params["grasp_orientation"][req.object_name][3].asDouble();
+    cout << req.object_name << grasping_orientation << endl;
+
+    cartesian_position.position.x = base_to_object.getOrigin().getX() + picking_params["compensation"][req.object_name][0].asDouble();
+    cartesian_position.position.y = base_to_object.getOrigin().getY() + picking_params["compensation"][req.object_name][1].asDouble();
+    cartesian_position.position.z = base_to_object.getOrigin().getZ() + picking_params["compensation"][req.object_name][2].asDouble();
     cartesian_position.orientation = grasping_orientation;
     
+    // cout << "base_to_ee_link: " << base_to_ee_link.getOrigin().getX() << ", " << base_to_ee_link.getOrigin().getY() << ", "  << base_to_ee_link.getOrigin().getZ() << endl;
+    // cout << "ee_link_to_color_optical_frame: " << ee_link_to_color_optical_frame.getOrigin().getX() << ", " << ee_link_to_color_optical_frame.getOrigin().getY() << ", "  << ee_link_to_color_optical_frame.getOrigin().getZ() << endl;
+    cout << "camera_to_object: " << camera_to_object.getOrigin().getX() << ", " << camera_to_object.getOrigin().getY() << ", "  << camera_to_object.getOrigin().getZ() << endl;
+    cout << "base_to_object: " << base_to_object.getOrigin().getX() << ", " << base_to_object.getOrigin().getY() << ", "  << base_to_object.getOrigin().getZ() << endl;
+
     try{
+
+        cout << "Press e to proceed." << endl;
+        char proceed;
+        cin >> proceed;
+        if(proceed!='e') throw("Interrupt ");
+
         // first approach
-        cartesian_position.position.z += picking_parems["approach_gap"].asDouble();
+        cartesian_position.position.z += picking_params["approach_gap"].asDouble();
         // cout << "cartesian_position" << cartesian_position << endl;
         cartesian_position_control(cartesian_position, 3.0, 0.5);
         
 
         // approach the object
-        cartesian_position.position.z += -picking_parems["approach_gap"].asDouble();
+        cartesian_position.position.z += -picking_params["approach_gap"].asDouble();
         cartesian_position_control(cartesian_position, 1.0, 0.0);
         
         // grasp 
-        ros::Duration(1.0).sleep();
+        gripper_command_msg.goal.command.position =  picking_params["grasp_angle"][req.object_name].asDouble();
+        gripper_command_msg.goal.command.max_effort = picking_params["grasp_force"][req.object_name].asDouble();
+        gripper_controller.publish(gripper_command_msg);
+        ros::Duration(2.0).sleep();
 
         // lift
-        cartesian_position.position.z += picking_parems["lift_gap"].asDouble();
-        cartesian_position_control(cartesian_position, 1.0, 0.0);
+        cartesian_position.position.z += picking_params["lift_gap"].asDouble();
+        cartesian_position_control(cartesian_position, 3.0, 0.0);
         
         // move to palce position
         geometry_msgs::Pose temp_box_position; // get temp_box_position frome req.place_point
-        // picking_parems["place_position"][req.place_point];
-        temp_box_position.position.x = cartesian_box_position[0];
-        temp_box_position.position.y = cartesian_box_position[1];
-        temp_box_position.position.z = cartesian_box_position[2];
+        temp_box_position.position.x = picking_params["place_position"][req.place_point][0].asDouble();
+        temp_box_position.position.y = picking_params["place_position"][req.place_point][1].asDouble();
+        temp_box_position.position.z = picking_params["place_position"][req.place_point][2].asDouble();
         temp_box_position.orientation = grasping_orientation;
 
-        temp_box_position.position.z += picking_parems["approach_gap"].asDouble();
+        temp_box_position.position.z += picking_params["approach_gap"].asDouble();
         cartesian_position_control(temp_box_position, 3.0, 0.5);
         
         
         // approach the box
-        temp_box_position.position.z += -picking_parems["approach_gap"].asDouble();
+        temp_box_position.position.z += -picking_params["approach_gap"].asDouble();
         cartesian_position_control(temp_box_position, 1.0, 0.0);
         
         
         // release
-        ros::Duration(1.0).sleep();
+        gripper_command_msg.goal.command.position = 40;
+        gripper_command_msg.goal.command.max_effort = 100;
+        gripper_controller.publish(gripper_command_msg);
+        ros::Duration(2.0).sleep();
 
         // lift
-        temp_box_position.position.z += picking_parems["lift_gap"].asDouble();
-        cartesian_position_control(temp_box_position, 1.0, 0.0);
+        temp_box_position.position.z += picking_params["lift_gap"].asDouble();
+        cartesian_position_control(temp_box_position, 3.0, 0.0);
         
         // back to stand by position
         joint_position_control(home_angles.data, 3.0);

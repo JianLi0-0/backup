@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<launch>
+    <arg name="robot_ip" doc="The IP address of the UR5 robot" />
+
+    <!-- start the Realsense435 -->
+    <include file="$(find realsense2_camera)/launch/rs_rgbd.launch" />
+    <include file="$(find industry_library_robot)/launch/camera_calibration_pub.launch" />
+
+
+    <!-- start the robot -->
+    <include file="$(find ur_e_gazebo)/launch/ur5e.launch">
+        <!-- <arg name="transmission_hw_interface" value="hardware_interface/PositionJointInterface" /> -->
+        <arg name="transmission_hw_interface" value="hardware_interface/VelocityJointInterface" />
+    </include>
+    <include file="$(find ur5_e_moveit_config)/launch/ur5_e_moveit_planning_execution.launch">
+        <arg name="sim" value="true" />
+    </include>
+    <include file="$(find ur5_e_moveit_config)/launch/moveit_rviz.launch">
+        <arg name="config" value="true" />
+    </include>
+
+    <include file="$(find ezgripper_driver)/launch/joy.launch">
+    </include>
+
+    <include file="$(find moveit_jog_arm)/launch/spacenav_cpp.launch" />
+
+
+
+</launch>

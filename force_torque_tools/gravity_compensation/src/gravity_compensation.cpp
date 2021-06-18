@@ -36,7 +36,7 @@
 #include <gravity_compensation/gravity_compensation.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <tf_conversions/tf_eigen.h>
-#include <eigen3/Eigen/Core>
+#include <Eigen/Core>
 #include <eigen_conversions/eigen_msg.h>
 
 
@@ -71,7 +71,6 @@ bool GravityCompensation::Compensate(const geometry_msgs::WrenchStamped &ft_zero
                                      const sensor_msgs::Imu &gravity,
                                      geometry_msgs::WrenchStamped &ft_compensated)
 {
-    static int error_cnt = 0;
 
     geometry_msgs::Vector3Stamped g;
     g.vector = gravity.linear_acceleration;
@@ -82,17 +81,14 @@ bool GravityCompensation::Compensate(const geometry_msgs::WrenchStamped &ft_zero
     geometry_msgs::Vector3Stamped g_ft_frame;
     try
     {
+        m_tf_listener->waitForTransform(ft_zeroed.header.frame_id, g.header.frame_id, ros::Time(0), ros::Duration(3.0));
         m_tf_listener->transformVector(ft_zeroed.header.frame_id, g, g_ft_frame);
     }
 
     catch(tf::TransformException &ex)
     {
-        error_cnt++;
-        if(error_cnt>10)
-        {
-            ROS_ERROR("Error transforming gravity vector to ft sensor frame...");
-            ROS_ERROR("%s.", ex.what());
-        }
+        ROS_ERROR("Error transforming gravity vector to ft sensor frame...");
+        ROS_ERROR("%s.", ex.what());
         return false;
     }
 
@@ -120,6 +116,7 @@ bool GravityCompensation::Compensate(const geometry_msgs::WrenchStamped &ft_zero
 
     try
     {
+        m_tf_listener->waitForTransform(ft_zeroed.header.frame_id, gripper_com.header.frame_id, ros::Time(0), ros::Duration(3.0));        
         m_tf_listener->transformPose(ft_zeroed.header.frame_id,
                                      gripper_com,
                                      ft_gripper_com);

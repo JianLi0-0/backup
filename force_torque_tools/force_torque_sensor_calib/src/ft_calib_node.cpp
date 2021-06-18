@@ -54,8 +54,6 @@ using namespace Calibration;
 
 class FTCalibNode
 {
-
-
 public:
 	ros::NodeHandle n_;
 	ros::AsyncSpinner *spinner;
@@ -217,20 +215,16 @@ public:
 	{
 		m_group = new moveit::planning_interface::MoveGroupInterface(m_moveit_group_name);
 		m_group->setPlannerId("RRTConnectkConfigDefault");
+		
 	}
-
 
 	// Calibrates the FT sensor by putting the arm in several different positions
 	bool moveNextPose()
 	{
-
 		std::stringstream ss;
 		ss << m_pose_counter;
 		Eigen::Matrix<double, 6, 1> pose;
 
-		// either find poses from the parameter server
-		// poses should be in "pose%d" format (e.g. pose0, pose1, pose2 ...)
-		// and they should be float arrays of size 6
 		if(!m_random_poses)
 		{
 			if(!getPose("pose"+ss.str(), pose))
@@ -244,9 +238,9 @@ public:
 			// pose_.position.x = pose(0);
 			// pose_.position.y = pose(1);
 			// pose_.position.z = pose(2);
+			
 
-			// tf::Quaternion q;
-			// q.setRPY((double)pose(3), (double)pose(4), (double)pose(5));
+			// tf::Quaternion q((double)pose(3), (double)pose(4), (double)pose(5), (double)pose(6));
 
 			// tf::quaternionTFToMsg(q, pose_.orientation);
 
@@ -256,12 +250,10 @@ public:
 			// pose_stamped.header.stamp = ros::Time::now();
 
 			// m_group->setPoseTarget(pose_stamped);
-
-			// (customize myself) use a set of joint angles rather than pose
 			std::vector<double> joint_group_position;
 			for(int i = 0; i < 6; i++)
 			{
-				joint_group_position.push_back(pose(i));
+				joint_group_position[i] = pose(i);
 			}
 			m_group->setJointValueTarget(joint_group_position);
 
@@ -282,7 +274,8 @@ public:
 			}
 		}
 
-
+		moveit::planning_interface::MoveGroupInterface::Plan my_plan;
+		m_group->plan(my_plan);
 		m_pose_counter++;
 		m_group->move();
 		ROS_INFO("Finished executing pose %d", m_pose_counter-1);
@@ -423,22 +416,32 @@ public:
 			return;
 		}
 
-		if(!m_received_imu)
-		{
-			// (customize myself) turn ROS_ERROR to ROS_WARN and comment return
-			ROS_WARN("Haven't received accelerometer readings");
-			// return;
-		}
+		// if(!m_received_imu)
+		// {
+		// 	ROS_ERROR("Haven't received accelerometer readings");
+		// 	return;
+		// }
 
-		// (customize myself) set the gravity direction manually
-		m_imu.header.frame_id = "base_link";
-		m_imu.linear_acceleration.x = 0;
-		m_imu.linear_acceleration.y = 0;
-		m_imu.linear_acceleration.z = -9.80665;
+				// express gravity vector in F/T sensor frame
+					m_imu.header.stamp = ros::Time::now();
+					m_imu.header.frame_id = "base_link";
+					//四元数位姿,所有数据设为固定值，可以自己写代码获取ＩＭＵ的数据，，然后进行传递
+					m_imu.orientation.x = 0;
+					m_imu.orientation.y = 0;
+					m_imu.orientation.z = 0;
+					m_imu.orientation.w = 1;
+					//线加速度
+					m_imu.linear_acceleration.x = 0; 
+					m_imu.linear_acceleration.y = 0;
+					m_imu.linear_acceleration.z = -9.80665;
+					//角速度
+					m_imu.angular_velocity.x = 0; 
+					m_imu.angular_velocity.y = 0; 
+					m_imu.angular_velocity.z = 0;
 
-		// express gravity vector in F/T sensor frame
 		geometry_msgs::Vector3Stamped gravity;
 		gravity.header.stamp = ros::Time();
+		//对这个找质心的算法有用的仅仅是imu的参考坐标系以及重力的大小方向。
 		gravity.header.frame_id = m_imu.header.frame_id;
 		gravity.vector = m_imu.linear_acceleration;
 
@@ -595,59 +598,63 @@ int main(int argc, char **argv)
 	unsigned int n_measurements = 0;
 
 	ros::Time t_end_move_arm = ros::Time::now();
-
+    char c;
+	using namespace std;
 	while (ft_calib_node.n_.ok() && !ft_calib_node.finished())
 	{
-
-		//		Move the arm, then calibrate sensor
-		if(!ret)
+        cout << "press 'c' and save a position" << endl; 
+  
+        //如果按下按钮保存一组数据
+        c = getchar();
+        getchar();
+		if(c == 'c')
 		{
-			ret = ft_calib_node.moveNextPose();
 			t_end_move_arm = ros::Time::now();
-		}
+					//		Move the arm, then calibrate sensor
+		    while((ros::Time::now() - t_end_move_arm).toSec() < wait_time)
+			{
+				usleep(10);
+			}
 
-		// average 100 measurements to calibrate the sensor in each position
-		else if ((ros::Time::now() - t_end_move_arm).toSec() > wait_time)
-		{
 			n_measurements++;
 			ft_calib_node.averageFTMeas(); // average over 100 measurements;
 
-			if(n_measurements==100)
-			{
-				ret = false;
-				n_measurements = 0;
+			ret = false;
+			n_measurements = 0;
 
-				ft_calib_node.addMeasurement(); // stacks up measurement matrices and FT measurementsa
-				double mass;
-				Eigen::Vector3d COM_pos;
-				Eigen::Vector3d f_bias;
-				Eigen::Vector3d t_bias;
+			ft_calib_node.addMeasurement(); // stacks up measurement matrices and FT measurementsa
+			double mass;
+			Eigen::Vector3d COM_pos;
+			Eigen::Vector3d f_bias;
+			Eigen::Vector3d t_bias;
 
-				ft_calib_node.getCalib(mass, COM_pos, f_bias, t_bias);
-				std::cout << "-------------------------------------------------------------" << std::endl;
-				std::cout << "Current calibration estimate:" << std::endl;
-				std::cout << std::endl << std::endl;
+			ft_calib_node.getCalib(mass, COM_pos, f_bias, t_bias);
+			std::cout << "-------------------------------------------------------------" << std::endl;
+			std::cout << "Current calibration estimate:" << std::endl;
+			std::cout << std::endl << std::endl;
 
-				std::cout << "Mass: " << mass << std::endl << std::endl;
+			std::cout << "Mass: " << mass << std::endl << std::endl;
 
-				std::cout << "Center of mass position (relative to FT sensor frame):" << std::endl;
-				std::cout << "[" << COM_pos(0) << ", " << COM_pos(1) << ", " << COM_pos(2) << "]";
-				std::cout << std::endl << std::endl;
+			std::cout << "Center of mass position (relative to FT sensor frame):" << std::endl;
+			std::cout << "[" << COM_pos(0) << ", " << COM_pos(1) << ", " << COM_pos(2) << "]";
+			std::cout << std::endl << std::endl;
 
 
-				std::cout << "FT bias: " << std::endl;
-				std::cout << "[" << f_bias(0) << ", " << f_bias(1) << ", " << f_bias(2) << ", ";
-				std::cout << t_bias(0) << ", " << t_bias(1) << ", " << t_bias(2) << "]";
-				std::cout << std::endl << std::endl;
+			std::cout << "FT bias: " << std::endl;
+			std::cout << "[" << f_bias(0) << ", " << f_bias(1) << ", " << f_bias(2) << ", ";
+			std::cout << t_bias(0) << ", " << t_bias(1) << ", " << t_bias(2) << "]";
+			std::cout << std::endl << std::endl;
 
 
-				std::cout << "-------------------------------------------------------------" << std::endl << std::endl << std::endl;
-				ft_calib_node.saveCalibData();
-			}
+			std::cout << "-------------------------------------------------------------" << std::endl << std::endl << std::endl;
+			ft_calib_node.saveCalibData();
+
 
 		}
-
-
+		else
+		{
+			break;
+		}
 		ros::spinOnce();
 		loop_rate.sleep();
 	}

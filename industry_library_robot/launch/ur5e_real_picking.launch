@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<launch>
+    <arg name="robot_ip" doc="The IP address of the UR5 robot" />
+
+    <!-- start the Realsense435 -->
+    <include file="$(find realsense2_camera)/launch/rs_rgbd.launch" />
+    <include file="$(find industry_library_robot)/launch/camera_calibration_pub.launch" />
+
+    <!-- start the robot -->
+    <include file="$(find ur_robot_driver)/launch/ur5e_bringup.launch">
+        <arg name="limited" value="true" />
+        <arg name="robot_ip" value="192.168.1.3" />
+        <arg name="controllers" default="joint_state_controller force_torque_sensor_controller pos_joint_traj_controller"/>
+        <arg name="stopped_controllers" default="joint_group_vel_controller speed_scaling_state_controller"/>
+    </include>
+    <include file="$(find ur5_e_moveit_config)/launch/ur5_e_moveit_planning_execution.launch">
+        <arg name="limited" value="true" />
+    </include>
+    <include file="$(find ur5_e_moveit_config)/launch/moveit_rviz.launch">
+        <arg name="config" value="true" />
+    </include>
+
+    <include file="$(find gravity_compensation)/launch/gravity_compensation.launch">
+    </include>
+
+    <include file="$(find ezgripper_driver)/launch/joy.launch">
+
+    <include file="$(find moveit_jog_arm)/launch/spacenav_cpp.launch" />
+    
+    </include>
+
+    
+
+
+
+</launch>

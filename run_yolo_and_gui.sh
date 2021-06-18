@@ -1,6 +1,6 @@
 #!/bin/sh
-cd /home/qwe/gui/
+cd /home/ur5e/gui/
 python3 main.py&
 sleep 1
-cd /home/qwe/darknet-master
+cd /home/ur5e/darknet
 python darknet_ros.py

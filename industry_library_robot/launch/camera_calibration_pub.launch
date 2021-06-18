@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
 <launch>
-      <node pkg="tf" type="static_transform_publisher" name="calibration_broadcaster" args="0 0 0 0 0 0 1 ee_link camera_link 1000" />
+      <node pkg="tf" type="static_transform_publisher" name="calibration_broadcaster" args="-0.0460639849005 0.02830395155 0.0150360841392 0.00245872719276 -0.0116551044236 -0.706343056648 0.707769453654 wrist_3_link camera_color_frame 1000" />
 </launch>
 

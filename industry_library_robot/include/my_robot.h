@@ -14,6 +14,7 @@
 #include <tf/transform_listener.h>
 #include <tf/transform_broadcaster.h>
 #include <trajectory_msgs/JointTrajectory.h>
+#include <control_msgs/GripperCommandActionGoal.h>
 
 using namespace std;
 
@@ -27,6 +28,7 @@ class Robot
         ros::Publisher ur_pub;
         ros::Publisher gazebo_position_controller;
         ros::Publisher pos_tra_controller;
+        ros::Publisher gripper_controller;
 
         // ros::Subscriber desired_pose_sub;
         ros::ServiceServer pick_and_place;
@@ -39,7 +41,7 @@ class Robot
         tf::StampedTransform camera_link_to_color_optical_frame;
         std_msgs::Float64MultiArray home_angles;
         Json::Value json_params;
-        Json::Value picking_parems;
+        Json::Value picking_params;
         Json::Reader reader;
         std::ifstream config_file;
         std::vector<double> cartesian_box_position;

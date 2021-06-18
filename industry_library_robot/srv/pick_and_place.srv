@@ -1,4 +1,5 @@
 geometry_msgs/Pose object_position
-int64 place_point
+string place_point
+string object_name
 ---
 bool is_successful

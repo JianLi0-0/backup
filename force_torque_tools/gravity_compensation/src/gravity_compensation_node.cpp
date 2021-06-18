@@ -36,8 +36,8 @@
 #include <gravity_compensation/gravity_compensation.h>
 #include <gravity_compensation/gravity_compensation_params.h>
 #include <sensor_msgs/Imu.h>
-#include <eigen3/Eigen/Core>
-#include <eigen3/Eigen/Geometry>
+#include <Eigen/Core>
+#include <Eigen/Geometry>
 #include <tf_conversions/tf_eigen.h>
 #include <tf/transform_datatypes.h>
 #include <tf/transform_broadcaster.h>
@@ -74,7 +74,25 @@ public:
         m_ft_bias = Eigen::Matrix<double, 6, 1>::Zero();
 
 		// subscribe to accelerometer topic and raw F/T sensor topic
-		topicSub_imu_ = n_.subscribe("imu", 1, &GravityCompensationNode::topicCallback_imu, this);
+		//topicSub_imu_ = n_.subscribe("imu", 1, &GravityCompensationNode::topicCallback_imu, this);
+		m_imu.header.stamp = ros::Time::now();
+		m_imu.header.frame_id = "base_link";
+		//四元数位姿,所有数据设为固定值，可以自己写代码获取ＩＭＵ的数据，然后进行传递
+		m_imu.orientation.x = 0;
+		m_imu.orientation.y = 0;
+		m_imu.orientation.z = 0;
+		m_imu.orientation.w = 1;
+		//线加速度
+		m_imu.linear_acceleration.x = 0; 
+		m_imu.linear_acceleration.y = 0;
+		m_imu.linear_acceleration.z = -9.80665 ;
+		//角速度
+		m_imu.angular_velocity.x = 0; 
+		m_imu.angular_velocity.y = 0; 
+		m_imu.angular_velocity.z = 0;
+
+		m_received_imu = true;
+
 		topicSub_ft_raw_ = n_.subscribe("ft_raw", 1, &GravityCompensationNode::topicCallback_ft_raw, this);
 
 		// bias calibration service
@@ -242,33 +260,16 @@ public:
 		return true;
 	}
 
-	void topicCallback_imu(const sensor_msgs::Imu::ConstPtr &msg)
-	{
-		m_imu = *msg;
-		m_received_imu = true;
-	}
 
 	void topicCallback_ft_raw(const geometry_msgs::WrenchStamped::ConstPtr &msg)
 	{
 		static int error_msg_count=0;
 
-		// if(!m_received_imu)
-		// {
-		// 	ROS_ERROR("No Imu reading");
-		// 	return;
-		// }
-
-		// if((ros::Time::now()-m_imu.header.stamp).toSec() > 0.1)
-		// {
-		// 	error_msg_count++;
-		// 	if(error_msg_count % 10==0)
-		// 		ROS_ERROR("Imu reading too old, not able to g-compensate ft measurement");
-		// 	return;
-		// }
-		
-		// fake imu message
-		m_imu.header.frame_id = "base_link";
-		m_imu.linear_acceleration.z = -9.80665;
+		if(!m_received_imu)
+		{
+			ROS_ERROR("No Imu reading");
+			return;
+		}
 
 		geometry_msgs::WrenchStamped ft_zeroed;
 		m_g_comp->Zero(*msg, ft_zeroed);

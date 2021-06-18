@@ -6,9 +6,10 @@ import time
 import math
 import numpy as np
 joint_angle = Float64MultiArray()
-# target_joint_angle = Float64MultiArray()
-target_joint_angle = np.array([0.1303,-0.581,1.980, -2.9699, -1.57079, 0.1303])
-# target_joint_angle = np.array([0.1303,-1.491,1.980, -2.0699, -1.57079, 0.1303])
+
+# target_joint_angle = np.array([-0.008477036152974904, -1.1687305730632325, -2.3112632274627686, -1.4607807409814377, 0, 1.893333077430725])
+target_joint_angle = np.array([-0.008477036152974904, -1.1687305730632325, -1.9112632274627686, -1.4607807409814377, 1.5298510789871216, 1.7201569080352783])
+
 def joint_states_cb(msg):
     temp = list(msg.position)
     temp[0] = msg.position[2]
